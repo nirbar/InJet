@@ -27,7 +27,7 @@ public:
 	void BindTo()
 	{
 		bindConstant_ = false;
-		delegate_ = std::bind<T1*>(&Jet<T1>::ResolveWithArgs, Jet<T1>::Scope(scope_), std::placeholders::_1);
+		delegate_ = std::bind<T*>(&Jet<T1>::ResolveWithArgs, Jet<T1>::Scope(scope_), std::placeholders::_1);
 	}
 
 	void BindTo(T* constant)
@@ -40,6 +40,11 @@ public:
 	{
 		bindConstant_ = false;
 		delegate_ = NULL;
+	}
+
+	void AsSingleton(bool asSingleton)
+	{
+		asSingleton_ = asSingleton;
 	}
 
 	T* Resolve()
@@ -55,17 +60,31 @@ public:
 			return constant_;
 		}
 
+		if (asSingleton_ && (constant_ != NULL))
+		{
+			return constant_;
+		}
+
+		T* ptr = NULL;
 		if (!!delegate_)
 		{
-			return delegate_(args);
+			ptr = delegate_(args);
 		}
-
-		if (!!ctor_)
+		else if (!!ctor_)
 		{
-			return ctor_(args);
+			ptr = ctor_(args);
 		}
 
-		throw std::exception("Don't know how to create object");
+		if (ptr == NULL)
+		{
+			throw std::exception("Don't know how to create object");
+		}
+
+		if (asSingleton_)
+		{
+			constant_ = ptr;
+		}
+		return ptr;
 	}
 
 	const std::string& scope() const
@@ -79,11 +98,13 @@ private:
 	Jet(const std::string& scope)
 		: scope_(scope)
 		, bindConstant_(false)
+		, asSingleton_(false)
 	{
 		ctor_ = std::bind<T*, T* (Jet<T>*, const NamedArgs&)>(T::JetCtor, this, std::placeholders::_1);
 	}
 
 	bool bindConstant_;
+	bool asSingleton_;
 	T* constant_;
 	std::function<T*(const NamedArgs&)> ctor_;
 	std::function<T*(const NamedArgs&)> delegate_;
