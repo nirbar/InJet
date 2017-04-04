@@ -1,5 +1,7 @@
 #pragma once
 #include <type_traits>
+#include <map>
+#include <string>
 #include "Jet.h"
 
 template<size_t a, typename ...ARGS>
@@ -13,52 +15,86 @@ class JetTypeDetector
 {
 public:
 		
-	C* construct(Jet<C>* jet)
+	static C* JetCtor(Jet<C>* jet, const NamedArgs& args)
 	{
-		return construct<ARGS...>(jet);
+		return construct<ARGS...>(jet, args);
 	}
 
-	template <typename ...ARGS>
-	typename std::enable_if<IsArgCount<0, ARGS...>(), C*>::type construct(Jet<C>* jet)
+#pragma region Constructor templates
+
+	template <typename ...ARGSS>
+	JetTypeDetector(typename std::enable_if<IsArgCount<0, ARGSS...>(), const NamedArgs&>::type)
 	{
-		return new C();
+	}
+
+	template <typename A1, typename ...ARGSS>
+	JetTypeDetector(A1*, typename std::enable_if<IsArgCount<0, ARGSS...>(), const NamedArgs&>::type)
+	{
+	}
+
+	template <typename A1, typename A2, typename ...ARGSS>
+	JetTypeDetector(A1*, A2*, typename std::enable_if<IsArgCount<0, ARGSS...>(), const NamedArgs&>::type)
+	{
+	}
+
+	template <typename A1, typename A2, typename A3, typename ...ARGSS>
+	JetTypeDetector(A1*, A2*, A3*, typename std::enable_if<IsArgCount<0, ARGSS...>(), const NamedArgs&>::type)
+	{
+	}
+
+	template <typename A1, typename A2, typename A3, typename A4, typename ...ARGSS>
+	JetTypeDetector(A1*, A2*, A3*, A4*, typename std::enable_if<IsArgCount<0, ARGSS...>(), const NamedArgs&>::type)
+	{
+	}
+
+#pragma endregion
+
+private:
+#pragma region construct function templates
+
+	template <typename ...ARGS>
+	static typename std::enable_if<IsArgCount<0, ARGS...>(), C*>::type construct(Jet<C>* jet, const NamedArgs& args)
+	{
+		return new C(args);
 	}
 
 	template <typename A1>
-	typename std::enable_if<IsArgCount<1, ARGS...>(), C*>::type construct(Jet<C>* jet)
+	static typename std::enable_if<IsArgCount<1, ARGS...>(), C*>::type construct(Jet<C>* jet, const NamedArgs& args)
 	{
 		Jet<A1>* a1 = Jet<A1>::Scope(jet->scope());
 
-		return new C(a1->Resolve());
+		return new C(a1->Resolve(), args);
 	}
 
 	template <typename A1, typename A2>
-	typename std::enable_if<IsArgCount<2, ARGS...>(), C*>::type construct(Jet<C>* jet)
+	static typename std::enable_if<IsArgCount<2, ARGS...>(), C*>::type construct(Jet<C>* jet, const NamedArgs& args)
 	{
 		Jet<A1>* a1 = Jet<A1>::Scope(jet->scope());
 		Jet<A2>* a2 = Jet<A2>::Scope(jet->scope());
 
-		return new C(a1->Resolve(), a2->Resolve());
+		return new C(a1->Resolve(), a2->Resolve(), args);
 	}
 
 	template <typename A1, typename A2, typename A3>
-	typename std::enable_if<IsArgCount<3, ARGS...>(), C*>::type construct(Jet<C>* jet)
+	static typename std::enable_if<IsArgCount<3, ARGS...>(), C*>::type construct(Jet<C>* jet, const NamedArgs& args)
 	{
 		Jet<A1>* a1 = Jet<A1>::Scope(jet->scope());
 		Jet<A2>* a2 = Jet<A2>::Scope(jet->scope());
 		Jet<A3>* a3 = Jet<A3>::Scope(jet->scope());
 
-		return new C(a1->Resolve(), a2->Resolve(), a3->Resolve());
+		return new C(a1->Resolve(), a2->Resolve(), a3->Resolve(), args);
 	}
 
 	template <typename A1, typename A2, typename A3, typename A4>
-	typename std::enable_if<IsArgCount<4, ARGS...>(), C*>::type construct(Jet<C>* jet)
+	static typename std::enable_if<IsArgCount<4, ARGS...>(), C*>::type construct(Jet<C>* jet, const NamedArgs& args)
 	{
 		Jet<A1>* a1 = Jet<A1>::Scope(jet->scope());
 		Jet<A2>* a2 = Jet<A2>::Scope(jet->scope());
 		Jet<A3>* a3 = Jet<A3>::Scope(jet->scope());
 		Jet<A3>* a4 = Jet<A4>::Scope(jet->scope());
 
-		return new C(a1->Resolve(), a2->Resolve(), a3->Resolve(), a4->Resolve());
+		return new C(a1->Resolve(), a2->Resolve(), a3->Resolve(), a4->Resolve(), args);
 	}
+
+#pragma endregion
 };

@@ -4,6 +4,8 @@
 #include <string>
 #include <memory>
 
+typedef std::map<std::string, void*> NamedArgs;
+
 template<typename T>
 class Jet
 {
@@ -25,25 +27,13 @@ public:
 	void BindTo()
 	{
 		bindConstant_ = false;
-		delegate_ = std::bind<T*>(&Jet<T1>::Resolve, Jet<T1>::Scope(scope_));
+		delegate_ = std::bind<T1*>(&Jet<T1>::ResolveWithArgs, Jet<T1>::Scope(scope_), std::placeholders::_1);
 	}
 
 	void BindTo(T* constant)
 	{
 		bindConstant_ = true;
 		constant_ = constant;
-	}
-
-	void ConstructWith(std::function<T*(void)>& ctor)
-	{
-		bindConstant_ = false;
-		ctor_ = ctor;
-	}
-
-	void ConstructWith(T* (*func)(void))
-	{
-		bindConstant_ = false;
-		ctor_ = func;
 	}
 
 	void BindToSelf()
@@ -54,6 +44,12 @@ public:
 
 	T* Resolve()
 	{
+		static NamedArgs empty;
+		return ResolveWithArgs(empty);
+	}
+
+	T* ResolveWithArgs(const NamedArgs& args)
+	{
 		if (bindConstant_)
 		{
 			return constant_;
@@ -61,12 +57,12 @@ public:
 
 		if (!!delegate_)
 		{
-			return delegate_();
+			return delegate_(args);
 		}
 
 		if (!!ctor_)
 		{
-			return ctor_();
+			return ctor_(args);
 		}
 
 		throw std::exception("Don't know how to create object");
@@ -84,16 +80,15 @@ private:
 		: scope_(scope)
 		, bindConstant_(false)
 	{
-		ctor_ = std::bind(T::JetCtor, this);
+		ctor_ = std::bind<T*, T* (Jet<T>*, const NamedArgs&)>(T::JetCtor, this, std::placeholders::_1);
 	}
 
 	bool bindConstant_;
 	T* constant_;
-	std::function<T*(void)> ctor_;
-	std::function<T*(void)> delegate_;
+	std::function<T*(const NamedArgs&)> ctor_;
+	std::function<T*(const NamedArgs&)> delegate_;
 	std::string scope_;
 
-	typedef T* (*JetBuilder)(Jet<T>*);
 	typedef std::map<std::string, std::unique_ptr<Jet<T>>> ScopeMap;
 	static ScopeMap scopeInstances_;
 };

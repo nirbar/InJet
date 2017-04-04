@@ -5,56 +5,44 @@
 #include "Jet.h"
 #include "JetTypeDetector.h"
 
-class other 
+class other : public  JetTypeDetector<other>
 {
 public:
 
-	static other* JetCtor(Jet<other>* jet)
-	{
-		JetTypeDetector<other> t;
-		return t.construct(jet);
-	}
-
-	other()
-		: i(3)
+	other(const NamedArgs& args)
+		: JetTypeDetector<other>(args)
+		, i(3)
 	{
 	}
 
 	int i;
 };
 
-class one
+class one: public JetTypeDetector<one>
 {
 public:
 
-	static one* JetCtor(Jet<one>* jet)
-	{
-		JetTypeDetector<one> t;
-		return t.construct(jet);
-	}
-
-	one() 
-		:i(1) 
+	one(const NamedArgs& args)
+		: JetTypeDetector<one>(args)
+		, i(1) 
 	{
 	}
 
 	int i;
 };
 
-class two : public one
+class two : public one, public JetTypeDetector<two, other>
 {
 private:
 	other *other_;
 
 public:
 
-	static two* JetCtor(Jet<two>* jet)
-	{
-		JetTypeDetector<two, other> t;
-		return t.construct(jet);
-	}
+	using JetTypeDetector<two, other>::JetCtor;
 
-	two(other* o)
+	two(other* o, const NamedArgs& args)
+		: JetTypeDetector<two, other>(o, args)
+		, one(args)
 	{
 		i = o->i;
 	}
