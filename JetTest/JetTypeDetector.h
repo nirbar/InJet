@@ -3,6 +3,7 @@
 #include <map>
 #include <string>
 #include "Jet.h"
+#include "CircularDependencyException.h"
 
 template<size_t a, typename ...ARGS>
 static bool constexpr IsArgCount()
@@ -13,11 +14,34 @@ static bool constexpr IsArgCount()
 template <typename C, typename ...ARGS>
 class JetTypeDetector
 {
+private:
+	static bool circularGuard_;
+
+	static void CircularGuard()
+	{
+		if (circularGuard_)
+		{
+			throw CircularDependencyException(typeid(C).name());
+		}
+		circularGuard_ = true;
+	}
+
 public:
 		
 	static C* JetCtor(Jet<C>* jet, const NamedArgs& args)
 	{
-		return construct<ARGS...>(jet, args);
+		CircularGuard();
+
+		try
+		{
+			C* p = construct<ARGS...>(jet, args);
+			circularGuard_ = false;
+			return p;
+		}
+		catch (CircularDependencyException ex)
+		{
+			throw CircularDependencyException(ex, typeid(C).name());
+		}
 	}
 
 #pragma region Constructor templates
@@ -98,3 +122,6 @@ private:
 
 #pragma endregion
 };
+
+template <typename C, typename ...ARGS>
+bool JetTypeDetector<C, ARGS...>::circularGuard_ = false;

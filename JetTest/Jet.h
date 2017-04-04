@@ -3,6 +3,7 @@
 #include <map>
 #include <string>
 #include <memory>
+#include "CircularDependencyException.h"
 
 typedef std::map<std::string, void*> NamedArgs;
 
@@ -66,13 +67,20 @@ public:
 		}
 
 		T* ptr = NULL;
-		if (!!delegate_)
+		try 
 		{
-			ptr = delegate_(args);
+			if (!!delegate_)
+			{
+				ptr = delegate_(args);
+			}
+			else if (!!ctor_)
+			{
+				ptr = ctor_(args);
+			}
 		}
-		else if (!!ctor_)
+		catch (const CircularDependencyException& ex)
 		{
-			ptr = ctor_(args);
+			printf("Circular dependency detected:\n%s", ex.DependencyList().c_str());
 		}
 
 		if (ptr == NULL)

@@ -145,6 +145,7 @@
     <Text Include="ReadMe.txt" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="CircularDependencyException.h" />
     <ClInclude Include="Jet.h" />
     <ClInclude Include="JetTypeDetector.h" />
     <ClInclude Include="stdafx.h" />
