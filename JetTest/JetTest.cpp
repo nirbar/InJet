@@ -33,9 +33,6 @@ public:
 
 class two : public one, public JetTypeDetector<two, other>
 {
-private:
-	other *other_;
-
 public:
 
 	using JetTypeDetector<two, other>::JetCtor;

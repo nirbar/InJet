@@ -27,25 +27,31 @@ public:
 	template<typename T1>
 	void BindTo()
 	{
-		bindConstant_ = false;
+		bindMode_ = BindMode::Normal;
 		delegate_ = std::bind<T*>(&Jet<T1>::ResolveWithArgs, Jet<T1>::Scope(scope_), std::placeholders::_1);
 	}
 
 	void BindTo(T* constant)
 	{
-		bindConstant_ = true;
+		bindMode_ = BindMode::Constant;
 		constant_ = constant;
+	}
+
+	void BindToFactory(std::function<T*(const NamedArgs&)> func)
+	{
+		bindMode_ = BindMode::Factory;
+		factory_ = func;
 	}
 
 	void BindToSelf()
 	{
-		bindConstant_ = false;
+		bindMode_ = BindMode::Normal;
 		delegate_ = NULL;
 	}
 
 	void AsSingleton(bool asSingleton)
 	{
-		asSingleton_ = asSingleton;
+		bindMode_ = BindMode::Singleton;
 	}
 
 	T* Resolve()
@@ -56,26 +62,41 @@ public:
 
 	T* ResolveWithArgs(const NamedArgs& args)
 	{
-		if (bindConstant_)
-		{
-			return constant_;
-		}
-
-		if (asSingleton_ && (constant_ != NULL))
-		{
-			return constant_;
-		}
-
 		T* ptr = NULL;
-		try 
+
+		try
 		{
-			if (!!delegate_)
+			switch (bindMode_)
 			{
-				ptr = delegate_(args);
-			}
-			else if (!!ctor_)
-			{
-				ptr = ctor_(args);
+			case BindMode::Constant:
+				ptr = constant_;
+				break;
+
+			case BindMode::Singleton:
+				if (constant_ != NULL)
+				{
+					ptr = constant_;
+					break;
+				}
+
+				// Fallthrough
+			case BindMode::Normal:
+				if (!!delegate_)
+				{
+					ptr = delegate_(args);
+				}
+				else if (!!ctor_)
+				{
+					ptr = ctor_(args);
+				}
+				break;
+
+			case BindMode::Factory:
+				ptr = factory_(args);
+				break;
+
+			default:
+				break;
 			}
 		}
 		catch (const CircularDependencyException& ex)
@@ -87,11 +108,6 @@ public:
 		{
 			throw std::exception("Don't know how to create object");
 		}
-
-		if (asSingleton_)
-		{
-			constant_ = ptr;
-		}
 		return ptr;
 	}
 
@@ -102,20 +118,27 @@ public:
 
 private:
 
+	enum BindMode
+	{
+		Normal,
+		Factory,
+		Constant,
+		Singleton
+	};
+
 	// Construct on scope only
 	Jet(const std::string& scope)
 		: scope_(scope)
-		, bindConstant_(false)
-		, asSingleton_(false)
+		, bindMode_(BindMode::Normal)
 	{
 		ctor_ = std::bind<T*, T* (Jet<T>*, const NamedArgs&)>(T::JetCtor, this, std::placeholders::_1);
 	}
 
-	bool bindConstant_;
-	bool asSingleton_;
+	BindMode bindMode_;
 	T* constant_;
 	std::function<T*(const NamedArgs&)> ctor_;
 	std::function<T*(const NamedArgs&)> delegate_;
+	std::function<T*(const NamedArgs&)> factory_;
 	std::string scope_;
 
 	typedef std::map<std::string, std::unique_ptr<Jet<T>>> ScopeMap;
@@ -124,3 +147,15 @@ private:
 
 template<typename T>
 typename Jet<T>::ScopeMap Jet<T>::scopeInstances_;
+
+// Specialization to lazy:
+
+template<typename T>
+class Jet<Jet<T>>
+{
+public:
+	Jet<T>* ResolveWithArgs(const NamedArgs& args)
+	{
+		return Jet<T>::Scope(this->scope());
+	}
+};
